@@ -20,17 +20,13 @@
 #include "ksize.h" //Đây có vẻ là một tệp header tự định nghĩa, có thể liên quan đến việc tính toán kích thước của các vùng nhớ trong kernel hoặc các cấu trúc dữ liệu cụ thể. Bạn có thể kiểm tra nội dung của tệp này để biết rõ hơn.
 
 //khai báo của một hàm được định nghĩa ở nơi khác (không phải trong tệp hiện tại), có tên là switch_to_osf_pal
-// unsigned long nr: một giá trị số nguyên không dấu (có thể là chỉ số hoặc mã số) xác định kiểu chuyển đổi
-// struct pcb_struct *pcb_va: một con trỏ đến cấu trúc pcb_struct (process control block - khối điều khiển tiến trình) trong không gian địa chỉ ảo
-// struct pcb_struct *pcb_pa: một con trỏ đến cấu trúc pcb_struct trong không gian địa chỉ vật lý
-// unsigned long *vptb: một con trỏ đến một giá trị có thể liên quan đến bảng trang (page table)
 // hàm này trả về một giá trị kiểu unsigned long. nhiệm vụ của nó là chuyển đổi hoặc điều khiển các trạng thái tiến trình trong kernel, đặc biệt trong kiến trúc Alpha.
 extern unsigned long switch_to_osf_pal(unsigned long nr, struct pcb_struct *pcb_va, struct pcb_struct *pcb_pa, unsigned long *vptb);
-// đây là khai báo của một hàm có tên move_stack, có thể được định nghĩa ở nơi khác. hàm này di chuyển hoặc đặt lại con trỏ stack đến địa chỉ mới new_stack, cho phép kernel thay đổi vị trí của ngăn xếp hiện tại. điều này là cần thiết trong quá trình quản lý bộ nhớ hoặc khi chuyển đổi giữa các ngữ cảnh của tiến trình.
+//hàm này di chuyển hoặc đặt lại con trỏ stack đến địa chỉ mới new_stack, cho phép kernel thay đổi vị trí của ngăn xếp hiện tại. điều này là cần thiết trong quá trình quản lý bộ nhớ hoặc khi chuyển đổi giữa các ngữ cảnh của tiến trình.
 extern void move_stack(unsigned long new_stack);
-// biến hwrpb là một con trỏ đến cấu trúc hwrpb_struct, có thể lưu trữ thông tin tham chiếu phần cứng hardware reference page block - hwrpb nó được khởi tạo với giá trị INIT_HWRPB, mà có thể là một macro hoặc hằng số được định nghĩa ở nơi khác. hwrpb thường dùng trong các kiến trúc phần cứng cụ thể chứa thông tin liên quan đến bộ xử lý hoặc tài nguyên phần cứng khác.
+//có thể lưu trữ thông tin tham chiếu phần cứng hardware reference page block, thường dùng trong các kiến trúc phần cứng cụ thể chứa thông tin liên quan đến bộ xử lý hoặc tài nguyên phần cứng khác.
 struct hwrpb_struct *hwrpb = INIT_HWRPB;
-// đây là khai báo một mảng tĩnh gồm một phần tử duy nhất của cấu trúc pcb_struct. cấu trúc này có thể đại diện cho khối điều khiển tiến trình (process control block - pcb), lưu trữ các thông tin cần thiết để kernel quản lý tiến trình như thanh ghi cpu, con trỏ ngăn xếp,..,do biến được khai báo tĩnh (static), nó chỉ có phạm vị hoạt động trong tệp hiện tại, tức là các hàm hoặc tệp khác không thể truy cập trưc tiếp biến này.
+// cấu trúc này có thể đại diện cho khối điều khiển tiến trình (process control block - pcb), lưu trữ các thông tin cần thiết để kernel quản lý tiến trình như thanh ghi cpu, con trỏ ngăn xếp,..
 static struct pcb_struct pcb_va[1];
 /*
  * Find a physical address of a virtual object..
@@ -38,23 +34,13 @@ static struct pcb_struct pcb_va[1];
  * This is easy using the virtual page table address.
  */
 // đoạn mã này định nghĩa một hàm inline để tìm địa chỉ vật lý (physical address) từ một địa chỉ ảo (vitual address)
-// static inline: từ khóa inline yêu cầu compiler cố gắng thay thế lời gọi hàm bằng nội dung của hàm để tối ưu hiệu năng. từ khóa static làm cho hàm chỉ có thể được sử dụng trong tệp hiện tại, không thể truy cập từ tệp khác.
-// hàm nhận vào hai tham số unsigned long * vptb: đây có thể là bảng trang page table, sử dụng địa chỉ ảo sang địa chỉ vật lý.
-// void *ptr: con trỏ đến một địa chỉ ảo cần được chuyển đổi
 static inline void * find_pa(unsigned long *vptb, void *ptr){
-	// ptr(địa chỉ ảo) được chuyển đổi sang kiểu unsigned long để thực hiện các phép toán trên địa chỉ
 	unsigned long address = (unsigned long) ptr;
 	unsigned long result;
-	// address >> 13: địa chỉ ảo được dịch phải 13 bit để lấy chỉ số của phần tử trong bảng trang vptb. điều này tương đương với chia địa chỉ ảo cho kích thước trang nhớ (page size). trong trường hợp này, có vẻ như mỗi trang nhớ có kích thước 8kb (2^13 byte), vì vậy phép dịch phải 13 bit.
-	// vptb[address >> 13]: từ bảng trang vptb, hàm truy xuất phần tử tương ứng với địa chỉ ảo đã được dịch.
 	result = vptb[address >> 13];
-	// dịch phải 32 bit để bỏ phần thấp của giá trị trong bảng trang, có thể chứa các cờ hoặc thông tin không liên quan đến địa chỉ.
 	result >>= 32;
-	// dịch trái lại 13 bit để khôi phục địa chỉ vật lý (vì địa chỉ vật lý có thể đã được lưu trữ ở phần cao của giá trị trong bảng trang)
 	result <<= 13;
-	// phép AND với 0x1fff (13 bit cuối) lấy phần bù địa chỉ trong trang nhớ và kết hợp nó với phần địa chỉ vật lý đã tính trước đó. điều này giữ lại phần offset trong trang đảm bảo tính chính xác của địa chỉ.
 	result |= address & 0x1fff;
-	// sau khi xử lý xong, kết quả (địa chỉ vật lý) được trả về dưới dạng void *
 	return (void *) result;
 	// Hàm find_pa chuyển đổi một địa chỉ ảo (ptr) thành địa chỉ vật lý bằng cách sử dụng bảng trang (vptb). Nó sử dụng các phép dịch bit để truy xuất đúng mục từ trong bảng trang và kết hợp với phần offset trong địa chỉ ảo để tính địa chỉ vật lý.
 	//Hàm này có thể được sử dụng trong hệ điều hành hoặc kernel khi cần dịch địa chỉ ảo của tiến trình sang địa chỉ vật lý của bộ nhớ.
