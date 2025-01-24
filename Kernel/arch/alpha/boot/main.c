@@ -15,18 +15,12 @@
 #include <asm/hwrpb.h> //tệp này chứa các định nghĩa và cấu trúc dữ liệu liên quan đến HWRPB (hardware reduced page table) cho các kiến trúc phần cứng nhất định. đây là phần của cơ chế quản lý bộ nhớ cho một số loại kiến trúc CPU.
 #include <linux/stdarg.h> //cung cấp các macro cần thiết để làm việc với danh sách tham số biến (va_list, va_start, va_end,...). điều này cho phép định nghĩa các hàm nhận một số lượng không xác định các tham số đầu vào.
 #include "ksize.h" //tệp này có thể là một tệp tiêu đề tùy chỉnh, có thể chứa các định nghĩa và hàm liên quan đến việc xác định kích thước của các đối tượng đã cấp phát trong kernel, hoặc có thể là một phần mở rộng cho các hàm và macro đã có trong các tệp tiêu đề trước đó.
-//Các dòng mã này cung cấp các công cụ và thư viện cần thiết để phát triển các mô-đun hoặc chức năng trong kernel Linux. Chúng cho phép lập trình viên tương tác với các thành phần cơ bản của kernel như quản lý bộ nhớ, xử lý chuỗi, giao tiếp với console, và làm việc với các thông tin hệ thống. Việc sử dụng các tệp tiêu đề này là cần thiết để đảm bảo rằng mã được viết tương thích và có thể chạy hiệu quả trong môi trường kernel.
 
-//từ khóa extern chỉ ra rằng hàm switch_to_osf_pal được khai báo ở đây nhưng sẽ được định nghĩa ở nơi khác, có thể trong một tệp mã nguồn khác hoặc trong một thư viện đã được biên dịch. hàm switch_to_osf_pal. 
-//có tham số nr: tham số kiểu unsigned long, có thể đại diện cho mã số lệnh PAL hoặc một thông tin liên quan đến việc chuyển đổi ngữ cảnh (context switch). 
-//tham số pcb_va: con trỏ tới cấu trúc dữ liệu pcb_struct, có thể là phiên bản ảo của PCB(Process control block).
-//pcb_pa: con trỏ tới một cấu trúc pcb_struct, có thể là phiên bản vật lý của PCB.
-//vptb: con trỏ tới một bảng trang (page table) ảo.
-//kiểu trả về unsigned long, có thể đại diện cho một kết quả hoặc trạng thái sau khi chuyển đổi ngữ cảnh thông qua PAL (privileged Architecture Library).
+//có thể đại diện cho một kết quả hoặc trạng thái sau khi chuyển đổi ngữ cảnh thông qua PAL (privileged Architecture Library).
 //hàm này có thể thực hiện một số thao tác liên quan đến việc chuyển đổi ngữ cảnh giữa các quá trình trong kernel, đặc biệt liên quan đến kiến trúc hệ thống hỗ trợ PAL. thông thường, các lệnh PAL được sử dụng trong các kiến trúc hệ thống đặc thù ví dụ như ALPHA AXP để thực hiện các tác vụ đặc quyền cấp thấp (như quản lý bộ nhớ, ngắt, hoặc chuyển đổi chế độ CPU).
 extern unsigned long switch_to_osf_pal(unsigned long nr, struct pcb_struct * pcb_va, struct pcb_struct * pcb_pa, unsigned long *vptb);
 struct hwrpb_struct *hwrpb = INIT_HWRPB; //đây là một con trỏ trỏ đến một cấu trúc dữ liệu hwrpb_struct. hwrpb có thể là một cấu trúc bảng thông tin hệ thống phần cứng (hardware restart parameter block), đặc biệt liên quan đến kiến trúc Alpha AXP. INIT_HWRPB: đây có thể là một macro hoặc giá trị khởi tạo được định nghĩa ở nơi khác. nó sẽ gán cho hwrpb địa chỉ khởi tạo của bảng thông tin phần cứng. bảng này chứa các tham số cần thiết về cấu hình hệ thống phần cứng mà kernel cần để thực thi các thao tác liên quan đến quản lý bộ nhớ và cpu. tác dụng: bảng hwrpb thường được sử dụng để lưu trữ thông tin về trạng thái của hệ thống và quá trình khởi động lại. đây là một phần quan trọng trong các hệ thống có kiến trúc đặc thù như Alpha, giúp kernel có thể quản lý phần cứng một cách trực tiếp và hiệu quả.
-static struct pcb_struct pcb_va[1]; //static: biến này chỉ có phạm vi sử dụng trong file hiện tại (file scope), tức là nó không thể được truy cập từ các file mã nguồn khác. //struct pcb_struct pcb_va[1]: đây là một mảng tĩnh có một phần tử kiểu pcb_struct. pcb_va có thể đại diện cho bản sao ảo của khối điều khiển tiến trình (PCB - Process control block). PCB lưu trữ thông tin về trạng thái của một tiến trình, chẳng hạn như các thanh ghi CPU, con trỏ ngăn xếp, bộ nhớ và thông tin ngữ cảnh khác.biến này có thể được sử dụng để lưu trữ và thao tác trên PCB của tiến trình trong quá trình chuyển đổi ngữ cảnh. nó được sử dụng nội bộ trong file mã nguồn này và có thể liên quan đến các thao tác chuyển đổi ngữ cảnh với các tham số PAL được quản lý bởi kernel.
+static struct pcb_struct pcb_va[1]; //pcb_va có thể đại diện cho bản sao ảo của khối điều khiển tiến trình (PCB - Process control block). PCB lưu trữ thông tin về trạng thái của một tiến trình, chẳng hạn như các thanh ghi CPU, con trỏ ngăn xếp, bộ nhớ và thông tin ngữ cảnh khác.biến này có thể được sử dụng để lưu trữ và thao tác trên PCB của tiến trình trong quá trình chuyển đổi ngữ cảnh. nó được sử dụng nội bộ trong file mã nguồn này và có thể liên quan đến các thao tác chuyển đổi ngữ cảnh với các tham số PAL được quản lý bởi kernel.
 //Đoạn mã này đang thiết lập một cấu trúc và khai báo một số thành phần liên quan đến việc chuyển đổi ngữ cảnh và quản lý bộ nhớ trong kernel Linux, đặc biệt trên các kiến trúc hệ thống sử dụng lệnh PAL (như Alpha AXP). Nó sử dụng các cấu trúc PCB để lưu trữ trạng thái tiến trình và bảng thông tin phần cứng hwrpb để lưu trữ các thông tin hệ thống cần thiết.
 
 /*
@@ -66,30 +60,17 @@ static inline void * find_pa(unsigned long *vptb, void *ptr){ //static inline: s
 #define VPTB	((unsigned long *) 0x200000000)//VPTB là một macro đại diện cho con trỏ kiểu unsigned long *, trỏ tới địa chỉ 0x200000000 (một địa chỉ bộ nhớ cố định). đây có thể là địa chỉ của bảng trang cao cập nhất (virtual page table) trong hệ thống quản lý bộ nhớ ảo. trong hệ thống quản lý bộ nhớ ảo (như trên kiến trúc Alpha AXP), bảng trang ảo là nơi lưu trữ các ánh xạ giữa địa chỉ ảo và địa chỉ vật lý. địa chỉ 0x200000000 được sử dụng như địa chỉ khởi điểm cho bảng trang này.
 #define L1	((unsigned long *) 0x200802000) //L1 là một macro trỏ tới địa chỉ 0x200802000, có thể đại diện cho bảng trang cấp 1 (level 1 page table), một cấp trong cấu trúc phân cấp quản lý bộ nhớ ảo. trong cấu trúc phân cấp của các bảng trang (multi-level page tables), bảng trang cấp 1 (L1) lưu trữ các mục ánh xạ tới các trang cấp thấp hơn hoặc trực tiếp ánh xạ tới bộ nhớ vật lý.
 //VPTB và L1 có vai trò quan trọng trong quản lý bộ nhớ ảo:
-// VPTB: Có thể đại diện cho bảng trang ảo toàn cục (hoặc cấp cao nhất) của hệ thống. Nó lưu giữ các ánh xạ tổng quát giữa địa chỉ ảo và địa chỉ vật lý cho toàn bộ hệ thống.
-// L1: Là một phần của cấu trúc phân cấp bảng trang. Mỗi mục trong bảng này có thể trỏ tới các bảng trang cấp thấp hơn hoặc ánh xạ trực tiếp tới các khối nhớ vật lý.
-// Áp dụng:
 // Các macro này thường được sử dụng để truy cập hoặc thao tác trực tiếp trên các bảng trang khi kernel cần chuyển đổi địa chỉ ảo thành địa chỉ vật lý, quản lý bộ nhớ hoặc khi thực hiện chuyển đổi ngữ cảnh (context switching) của các tiến trình.
 // Chúng cũng có thể liên quan đến các cơ chế paging trong hệ điều hành, nơi mà kernel phải duy trì và cập nhật bảng trang khi quản lý bộ nhớ ảo cho các tiến trình.
 
 //hàm này có nhiệm vụ chuyển hệ thống sang sử dụng OSF PAL code, một mã cấp thấp (privileged architecture library - PAL) trong kiến trúc alpha, sau đó khởi tạo các cấu trúc cần thiết cho cpu và thực hiện cập nhật bộ nhớ.
 void pal_init(void){
-	//khai báo biến:
-	//i và rev: các biến kiểu unsigned long, i sẽ chứa kết quả từ việc chuyển sang OSF PAL code, và rev chứa phiên bản PAL sau khi chuyển đổi. 
-	//percpu: con trỏ tới một cấu trúc dữ liệu trên mỗi cpu (per-cpu structure), chứa thông tin cụ thể cho từng cpu.
-	//pcb_pa: con trỏ tới PCB (process control block - khối điều khiển tiến trình) dạng vật lý.
 	unsigned long i, rev;
 	struct percpu_struct * percpu;
 	struct pcb_struct * pcb_pa;
 
 	/* Create the dummy PCB.  */
 	//tạo pcb giả:
-	//pcb_va: đây là một biến PCB (process control block), được khởi tạo các giá trị giả (dummy).
-	//ksp: kernel stack pointer - trỏ tới vị trí của ngăn xếp kernel, được khởi tạo bằng 0.
-	//usp: user stack pointer - tương tự với ksp nhưng dành cho không gian người dùng, cũng được khởi tạo bằng 0.
-	//ptbr = L1[1] >> 32: điểm tới bảng trang của tiến trình, được lấy từ bảng trang L1.
-	//các thuộc tính khác như: asn, pcc, unique, flags, res1, và res2 đều được khởi tạo với các giá trị phù hợp trong đó:
-	//flags = 1: có thể là cờ để đánh dấu PCB này đã được khởi tạo.
 	pcb_va->ksp = 0;
 	pcb_va->usp = 0;
 	pcb_va->ptbr = L1[1] >> 32;
@@ -141,15 +122,12 @@ static inline long openboot(void){
 	long result;
 
 	result = callback_getenv(ENV_BOOTED_DEV, bootdev, 255); //đây là một hàm callback dùng để lấy giá trị của một biến môi trường. trong trường hợp này, nó lấy giá trị của biến môi trường ENV_BOOTED_DEV, là một biến chứa thông tin về thiết bị đã khởi động hệ thống.
-	//bootdev: địa chỉ của mảng nơi kết quả sẽ được lưu trữ.
+
 	//với kích thước tối đa 255 được lưu trữ trong bootdev.
-	//kết quả trả về result: nếu thành công, result sẽ chứa số byte đã đọc, nếu thất bại sẽ trả về giá trị âm (thể hiện lỗi).
 	if (result < 0)
 	//nếu hàm callback_getenv trả về giá trị nhỏ hơn 0, điều này có nghĩa là việc lấy tên thiết bị khởi động thất bại. khi đó, hàm sẽ trả về mã lỗi
 		return result;
 	return callback_open(bootdev, result & 255);
-	//callback_open(bootdev, result & 255): hàm này mở thiết bị khởi động bằng tên thiết bị đã lấy được từ bootdev.
-	//result & 255: phần này giới hạn số byte được truyền vào khi mở thiết bị, giới hạn ở 255 byte (vì nó thực hiện phép AND với 255, tức là 0xFF).
 	//openboot là một hàm dùng trong quá trình khởi động, khi hệ thống cần biết thiết bị khởi động nào được sử dụng và tiến hành mở thiết bị đó để tiếp tục quá trình khởi động hệ điều hành. Hàm này hoạt động ở mức rất thấp, liên quan đến việc quản lý phần cứng trong quá trình khởi động
 }
 
